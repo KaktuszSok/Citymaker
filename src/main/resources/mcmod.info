@@ -1,0 +1,16 @@
+[
+{
+  "modid": "citymaker",
+  "name": "Citymaker",
+  "description": "Make cities!",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["Kaktusz"],
+  "credits": "Kaktusz - Lead Dev.",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

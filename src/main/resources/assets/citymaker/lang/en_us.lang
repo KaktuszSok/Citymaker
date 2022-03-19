@@ -1,0 +1,12 @@
+tile.road_builder.name=Road Builder
+tile.road_builder_creative.name=Road Builder (Creative)
+container.road_builder=Road Builder
+
+tile.wall_builder.name=Wall Builder
+tile.wall_builder_creative.name=Wall Builder (Creative)
+container.wall_builder=Wall Builder
+
+citymaker.error.clipboard_contents_invalid=Clipboard contents are not text!
+citymaker.info.roadmap_import_valid=Roadmap imported successfully!
+citymaker.error.roadmap_import_invalid=The imported data string could not be parsed into a roadmap.
+citymaker.info.map_copied_to_clipboard=Data string has been copied to clipboard.
