@@ -313,9 +313,9 @@ public class TileEntityWallBuilder extends TileEntity implements ITickable, IHas
 
 	private void spawnParticlesAroundBlock(BlockPos where, EnumParticleTypes particleType) {
 		VFXUtils.serverSpawnParticle(world, where.getX()+0.5D, where.getY()+0.5D, where.getZ(), particleType, true);
-		VFXUtils.serverSpawnParticle(world, where.getX()-0.5D, where.getY()+0.5D, where.getZ(), particleType, true);
+		VFXUtils.serverSpawnParticle(world, where.getX()+0.5D, where.getY()+0.5D, where.getZ()+1.0D, particleType, true);
 		VFXUtils.serverSpawnParticle(world, where.getX(), where.getY()+0.5D, where.getZ()+0.5D, particleType, true);
-		VFXUtils.serverSpawnParticle(world, where.getX(), where.getY()+0.5D, where.getZ()-0.5D, particleType, true);
+		VFXUtils.serverSpawnParticle(world, where.getX()+1.0D, where.getY()+0.5D, where.getZ()+0.5D, particleType, true);
 	}
 
 	@Override
