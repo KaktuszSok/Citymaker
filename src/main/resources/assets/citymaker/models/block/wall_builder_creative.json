@@ -1,6 +1,8 @@
 {
-  "parent": "block/cube_all",
+  "parent": "block/orientable",
   "textures": {
-    "all": "citymaker:blocks/wall_builder_creative"
+    "top": "citymaker:blocks/wall_builder_creative_top",
+    "front": "citymaker:blocks/wall_builder_creative_front",
+    "side": "citymaker:blocks/wall_builder_creative_side"
   }
 }

@@ -25,4 +25,14 @@ public class WallBuilderItemHandler extends ItemStackHandler {
 		}
 		return false;
 	}
+
+	public boolean tryConsumeItemLike(ItemStack requiredItem) {
+		for (ItemStack stack : stacks) {
+			if(ItemStack.areItemsEqual(stack, requiredItem) && ItemStack.areItemStackTagsEqual(stack, requiredItem)) {
+				stack.shrink(1);
+				return true;
+			}
+		}
+		return false;
+	}
 }

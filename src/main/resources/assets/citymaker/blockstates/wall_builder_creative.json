@@ -1,5 +1,8 @@
 {
   "variants": {
-    "normal": { "model": "citymaker:wall_builder_creative" }
+    "facing=north": { "model": "citymaker:wall_builder_creative" },
+    "facing=south": { "model": "citymaker:wall_builder_creative", "y": 180 },
+    "facing=west":  { "model": "citymaker:wall_builder_creative", "y": 270 },
+    "facing=east":  { "model": "citymaker:wall_builder_creative", "y": 90 }
   }
 }

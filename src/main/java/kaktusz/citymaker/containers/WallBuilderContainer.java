@@ -1,6 +1,5 @@
 package kaktusz.citymaker.containers;
 
-import kaktusz.citymaker.tileentities.TileEntityRoadBuilder;
 import kaktusz.citymaker.tileentities.TileEntityWallBuilder;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
@@ -24,28 +23,34 @@ public class WallBuilderContainer extends Container {
 	}
 
 	private void addPlayerSlots(IInventory playerInventory) {
+		int offset = (tileEntity.inventory.getSlots()/9 - 4) * 18;
+
 		//main inv
-		for (int row = 0; row < 3; ++row) {
-			for (int col = 0; col < 9; ++col) {
-				int x = 8 + col * 18;
-				int y = row * 18 + 94;
-				this.addSlotToContainer(new Slot(playerInventory, col + row * 9 + 10, x, y));
+		for (int r = 0; r < 3; r++)
+		{
+			for (int c = 0; c < 9; c++)
+			{
+				this.addSlotToContainer(new Slot(playerInventory, c + r * 9 + 9, 8 + c * 18, 103 + r * 18 + offset));
 			}
 		}
 
 		//hotbar
-		for (int row = 0; row < 9; ++row) {
-			int x = 8 + row * 18;
-			int y = 152;
-			this.addSlotToContainer(new Slot(playerInventory, row, x, y));
+		for (int i1 = 0; i1 < 9; ++i1)
+		{
+			this.addSlotToContainer(new Slot(playerInventory, i1, 8 + i1 * 18, 161 + offset));
 		}
 	}
 
 	private void addBuilderSlots() {
 		IItemHandler handler = tileEntity.inventory;
-		addSlotToContainer(new SlotItemHandler(handler, 0, 8, 18));
-		addSlotToContainer(new SlotItemHandler(handler, 1, 8, 40));
-		addSlotToContainer(new SlotItemHandler(handler, 2, 8, 62));
+		for (int j = 0; j < handler.getSlots()/9; ++j)
+		{
+			for (int k = 0; k < 9; ++k)
+			{
+				this.addSlotToContainer(new SlotItemHandler(handler, k + j * 9, 8 + k * 18, 18 + j * 18));
+			}
+		}
+
 	}
 
 	@Override
@@ -57,11 +62,11 @@ public class WallBuilderContainer extends Container {
 			ItemStack slotStack = slot.getStack();
 			itemStack = slotStack.copy();
 
-			if(index < TileEntityRoadBuilder.INV_SIZE) {
-				if(!mergeItemStack(slotStack, TileEntityRoadBuilder.INV_SIZE, inventorySlots.size(), true)) {
+			if(index < TileEntityWallBuilder.INV_SIZE) {
+				if(!mergeItemStack(slotStack, TileEntityWallBuilder.INV_SIZE, inventorySlots.size(), true)) {
 					return ItemStack.EMPTY;
 				}
-			} else if(!mergeItemStack(slotStack, 0, TileEntityRoadBuilder.INV_SIZE, false)) {
+			} else if(!mergeItemStack(slotStack, 0, TileEntityWallBuilder.INV_SIZE, false)) {
 				return ItemStack.EMPTY;
 			}
 
