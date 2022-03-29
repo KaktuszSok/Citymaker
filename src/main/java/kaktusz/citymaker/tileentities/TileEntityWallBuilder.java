@@ -14,7 +14,6 @@ import net.minecraft.block.Block;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
@@ -25,6 +24,7 @@ import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
@@ -152,7 +152,7 @@ public class TileEntityWallBuilder extends TileEntity implements ITickable, IHas
 
 			ColumnPreset scannedColumn = new ColumnPreset(world, scanPos, facing);
 			if(!scannedColumnPresets.containsKey(scannedState)) { //possibly a new column preset
-				if (scannedColumn.getHeight() == 0) //not a column (or column "seed" block)
+				if (scannedColumn.getHeight() == 0) //not a column (or column foundation block)
 					continue;
 
 				scannedColumnPresets.put(scannedState, scannedColumn);
@@ -200,28 +200,60 @@ public class TileEntityWallBuilder extends TileEntity implements ITickable, IHas
 	}
 
 	/**
-	 * Tries to find the next column to move to in the order forward, right, left.
+	 * Tries to find the next column to move to in the order left, forward, right.
 	 */
 	private boolean tryMoveToNextColumn() {
-		BlockPos groundPos = new BlockPos(buildingPos.getX(), pos.getY(), buildingPos.getZ());
-		for (int i = 0; i < 4; i++, nextPosDir = nextPosDir.rotateY()) {
-			if(i == 2) //don't attempt to backtrack
-				continue;
 
-			BlockPos nextPos = groundPos.add(nextPosDir.getDirectionVec());
+		BlockPos groundPos = new BlockPos(buildingPos.getX(), pos.getY(), buildingPos.getZ());
+		EnumFacing dirFwd = nextPosDir;
+		EnumFacing dirL = nextPosDir.rotateYCCW();
+		EnumFacing dirR = nextPosDir.rotateY();
+		Vec3i fwd = dirFwd.getDirectionVec();
+		Vec3i left = dirL.getDirectionVec();
+		Vec3i right = dirR.getDirectionVec();
+		Queue<BlockPos> scanPositions = new LinkedList<>();
+		Queue<EnumFacing> directionsOrder = new LinkedList<>();
+
+		//try left
+		scanPositions.add(groundPos.add(left));
+		directionsOrder.add(dirL);
+
+		//try fwd
+		scanPositions.add(groundPos.add(fwd));
+		directionsOrder.add(dirFwd);
+
+		//try L-fwd
+		scanPositions.add(groundPos.add(left).add(fwd));
+		directionsOrder.add(dirL);
+
+		//try right
+		scanPositions.add(groundPos.add(right));
+		directionsOrder.add(dirR);
+
+		//try R-fwd
+		scanPositions.add(groundPos.add(right).add(fwd));
+		directionsOrder.add(dirR);
+
+		//try R-back
+		scanPositions.add(groundPos.add(right).subtract(fwd));
+		directionsOrder.add(dirR);
+
+
+		nextPosDir = nextPosDir.rotateYCCW();
+		while(!scanPositions.isEmpty()) {
+			BlockPos nextPos = scanPositions.poll();
+			nextPosDir = directionsOrder.poll();
 			if(Math.abs(nextPos.getX() - pos.getX()) >= MAX_RANGE || Math.abs(nextPos.getZ() - pos.getZ()) >= MAX_RANGE) { //too far
 				continue;
 			}
 			if(!builtOrInvalidColumnPositions.add(nextPos)) { //we were here already
 				continue;
 			}
-			IBlockState nextState = world.getBlockState(nextPos);
-			ColumnPreset preset = scannedColumnPresets.get(nextState);
-			if(preset == null) { //ground block is not a column seed
+			if(!isPosOnColumn(nextPos)) { //ground block is not a column foundation
 				continue;
 			}
 
-			//ground block is a column seed!
+			//ground block is a column foundation!
 			buildingPos = nextPos.up(); //start building at the block above ground
 			return true;
 		}
@@ -289,15 +321,20 @@ public class TileEntityWallBuilder extends TileEntity implements ITickable, IHas
 		if(isPosOnColumn(leftPos)) {
 			return true; //column - skip
 		}
-		if(!tryUseEnergy() || !tryPlaceBlock(leftPos, desiredDecorState))
+		if(!tryPlaceBlock(leftPos, desiredDecorState))
 			return false; //no energy or materials - stuck
 
-		//if successful, try the same on the front
+		//check if the left-fwd block is a column foundation (indicating that we shouldn't place a decor at fwd)
+		if(isPosOnColumn(leftPos.add(nextPosDir.getDirectionVec()))) {
+			return true; //column at left-fwd - don't place fwd decor
+		}
+
+		//if left place successful and left-front is not a column, try the same on the front
 		BlockPos frontPos = buildingPos.add(nextPosDir.getDirectionVec());
 		if(isPosOnColumn(frontPos)) {
 			return true; //column - skip
 		}
-		if(!tryUseEnergy() || !tryPlaceBlock(frontPos, RotationUtils.rotateAroundY(desiredDecorState, 1)))
+		if(!tryPlaceBlock(frontPos, RotationUtils.rotateAroundY(desiredDecorState, 1)))
 			return false; //no energy or materials - stuck
 
 		return true; //success!

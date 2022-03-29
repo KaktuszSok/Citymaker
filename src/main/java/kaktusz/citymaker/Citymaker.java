@@ -24,7 +24,7 @@ public class Citymaker
     public static final String CLIENT_PROXY_CLASS = "kaktusz.citymaker.proxy.ClientProxy";
     public static final String COMMON_PROXY_CLASS = "kaktusz.citymaker.proxy.CommonProxy";
     @SidedProxy(clientSide = CLIENT_PROXY_CLASS, serverSide = COMMON_PROXY_CLASS)
-    public static CommonProxy proxy;
+    public static CommonProxy PROXY;
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event)

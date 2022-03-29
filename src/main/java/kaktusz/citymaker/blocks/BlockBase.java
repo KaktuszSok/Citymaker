@@ -25,6 +25,6 @@ public class BlockBase extends Block implements IHasModel {
 
 	@Override
 	public void registerModels() {
-		Citymaker.proxy.registerItemRenderer(Item.getItemFromBlock(this), 0, "inventory");
+		Citymaker.PROXY.registerItemRenderer(Item.getItemFromBlock(this), 0, "inventory");
 	}
 }
