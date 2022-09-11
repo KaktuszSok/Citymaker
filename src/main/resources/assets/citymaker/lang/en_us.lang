@@ -6,7 +6,15 @@ tile.wall_builder.name=Wall Builder
 tile.wall_builder_creative.name=Wall Builder (Creative)
 container.wall_builder=Wall Builder
 
+item.road_staff.name=Road Staff
+
 citymaker.error.clipboard_contents_invalid=Clipboard contents are not text!
 citymaker.info.roadmap_import_valid=Roadmap imported successfully!
 citymaker.error.roadmap_import_invalid=The imported data string could not be parsed into a roadmap.
 citymaker.info.map_copied_to_clipboard=Data string has been copied to clipboard.
+citymaker.error.road_staff_no_palette=You must first choose a block palette by shift-right-clicking a cross-section of your road. First click the midline and then the very edge.
+citymaker.error.road_staff_too_long=The road length must not exceed %1$s blocks (would be %2$s).
+citymaker.error.palette_not_in_line=The block palette must be flat and in a straight line.
+citymaker.error.palette_too_wide=The block palette must be no more than %1$s metres wide.
+citymaker.error.palette_invalid_blocks=The block palette does not support %1$s.
+citymaker.info.palette_chosen=Palette set to %1$s.

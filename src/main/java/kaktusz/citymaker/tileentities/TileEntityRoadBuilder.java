@@ -277,7 +277,10 @@ public class TileEntityRoadBuilder extends TileEntity implements ITickable, IHas
 	}
 
 	public Roadmap scanArea(int chunksX, int chunksZ) {
-		if(scanCooldown > 0)
+		return scanArea(chunksX, chunksZ, false);
+	}
+	public Roadmap scanArea(int chunksX, int chunksZ, boolean bypassCooldown) {
+		if(!bypassCooldown && scanCooldown > 0)
 			return null;
 
 		scanCooldown = chunksX*chunksZ/8; //cooldown 1 tick per 8 chunks scanned. TODO: config?
@@ -302,7 +305,7 @@ public class TileEntityRoadBuilder extends TileEntity implements ITickable, IHas
 				roadmap.terrainmap[x][z] = world.getBlockState(worldPos).getMaterial().isSolid();
 			}
 		}
-		roadmap.markAsHavingTerrainData();
+		roadmap.hasTerrainData = true;
 
 		return roadmap;
 	}
@@ -351,10 +354,7 @@ public class TileEntityRoadBuilder extends TileEntity implements ITickable, IHas
 				energy,
 				null));
 
-		String roadmapStrSaved = roadmapStr;
-		if(roadmapStrSaved == null)
-			roadmapStrSaved = "";
-		compound.setTag("roadmap", new NBTTagString(roadmapStrSaved));
+		compound.setTag("roadmap", new NBTTagString(getSavedRoadmapString(false)));
 
 		compound.setTag("gridIdx", new NBTTagInt(gridIdx));
 
@@ -387,7 +387,8 @@ public class TileEntityRoadBuilder extends TileEntity implements ITickable, IHas
 	@Override
 	public NBTTagCompound getUpdateTag() {
 		NBTTagCompound tag = super.getUpdateTag();
-		tag.setTag("roadmap", new NBTTagString(roadmapStr == null ? "" : roadmapStr));
+
+		tag.setTag("roadmap", new NBTTagString(getSavedRoadmapString(true)));
 		return tag;
 	}
 
@@ -402,6 +403,20 @@ public class TileEntityRoadBuilder extends TileEntity implements ITickable, IHas
 		super.onDataPacket(net, pkt);
 		handleUpdateTag(pkt.getNbtCompound());
 
+	}
+
+	@Nonnull
+	private String getSavedRoadmapString(boolean includeTerrainData) {
+		String roadmapStrSaved;
+		Roadmap roadmap = getRoadmap();
+		if(roadmap == null) {
+			roadmapStrSaved = "";
+		} else {
+			roadmapStrSaved = Roadmap.toBase64(roadmap, includeTerrainData);
+		}
+		if(roadmapStrSaved == null)
+			roadmapStrSaved = "";
+		return roadmapStrSaved;
 	}
 
 	@Override
@@ -449,8 +464,16 @@ public class TileEntityRoadBuilder extends TileEntity implements ITickable, IHas
 
 		if(roadmapCache == null) {
 			roadmapCache = Roadmap.fromBase64(roadmapStr);
-			if(roadmapCache == null)
+			if(roadmapCache == null) {
 				roadmapStr = null; //clear string if it can't be made into a valid roadmap
+			}
+			else if(!roadmapCache.hasTerrainData) { //add terrain data if not present in string
+				Roadmap scannedMap = scanArea(roadmapCache.heightmap.length/16, roadmapCache.heightmap[0].length/16);
+				if(scannedMap != null) {
+					Roadmap.mergeGridData(roadmapCache, scannedMap);
+					roadmapCache = scannedMap;
+				}
+			}
 		}
 
 		return roadmapCache;

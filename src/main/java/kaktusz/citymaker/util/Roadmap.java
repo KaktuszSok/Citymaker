@@ -2,6 +2,7 @@ package kaktusz.citymaker.util;
 
 import com.google.common.io.LittleEndianDataInputStream;
 import com.google.common.io.LittleEndianDataOutputStream;
+import kaktusz.citymaker.Citymaker;
 import net.minecraft.util.math.MathHelper;
 
 import java.io.ByteArrayInputStream;
@@ -42,7 +43,7 @@ public class Roadmap {
 	public byte[][] statemap;
 	public short[][] heightmap;
 	public boolean[][] terrainmap;
-	private boolean hasTerrainData = false;
+	public boolean hasTerrainData = false;
 
 	/**
 	 * Maximum size of the map in chunks along any axis
@@ -60,10 +61,6 @@ public class Roadmap {
 		terrainmap = new boolean[sizeX][sizeZ];
 
 		return this;
-	}
-
-	public void markAsHavingTerrainData() {
-		hasTerrainData = true;
 	}
 
 	@Override
@@ -279,12 +276,20 @@ public class Roadmap {
 		}
 	}
 
+	/**
+	 * Shallow-copies the source's road data to the target.
+	 * The target should be a map of the terrain (terrainmap and heightmap) and the source a map of the roads (statemap).
+	 */
 	public static void mergeGridData(Roadmap source, Roadmap target) {
+		if(source == null || target == null)
+			return;
 		target.statemap = source.statemap;
 	}
 
 	private static void log(String message) {
-		//Citymaker.logger.info(message);
-		System.out.println(message);
+		if(Citymaker.logger != null)
+			Citymaker.logger.info(message);
+		else
+			System.out.println(message);
 	}
 }
