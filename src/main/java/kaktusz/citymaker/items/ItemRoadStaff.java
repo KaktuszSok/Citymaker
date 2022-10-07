@@ -1,6 +1,5 @@
 package kaktusz.citymaker.items;
 
-import com.sun.javafx.geom.Vec2d;
 import kaktusz.citymaker.Citymaker;
 import kaktusz.citymaker.init.ModItems;
 import kaktusz.citymaker.util.*;
@@ -54,6 +53,10 @@ public class ItemRoadStaff extends Item implements IHasModel {
 		Citymaker.PROXY.registerItemRenderer(this, 0, "inventory");
 	}
 
+	//TODO shift+leftclick = clear
+	//TODO auto-inherit tangent from previous curve
+	//TODO visualise current state
+	//TODO preview road and deleted blocks
 	@Override
 	public EnumActionResult onItemUse(EntityPlayer player, World worldIn, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
 		if(player.isSneaking()) {
@@ -68,7 +71,8 @@ public class ItemRoadStaff extends Item implements IHasModel {
 		NBTTagCompound nbt = getOrCreateNBT(stack);
 
 		if(!nbt.hasKey("palette")) {
-			MessageUtils.sendErrorMessage(playerIn, "road_staff_no_palette");
+			if(worldIn.isRemote)
+				MessageUtils.sendErrorMessage(playerIn, "road_staff_no_palette");
 			return EnumActionResult.FAIL;
 		}
 
@@ -82,8 +86,6 @@ public class ItemRoadStaff extends Item implements IHasModel {
 		}
 		BlockPos tangentIn = NBTUtil.getPosFromTag(nbt.getCompoundTag("tangentIn"));
 		BlockPos startPos = NBTUtil.getPosFromTag(nbt.getCompoundTag("startPos"));
-		nbt.removeTag("tangentIn");
-		nbt.removeTag("startPos");
 		BlockPos endPos = posIn;
 
 		boolean straight = tangentIn.getX() == startPos.getX() && tangentIn.getZ() == startPos.getZ();
@@ -93,25 +95,29 @@ public class ItemRoadStaff extends Item implements IHasModel {
 			float deltaAngle = GeometryUtils.signedAngle(tangent, endpointsDir);
 			straight = deltaAngle == 0f || Float.isNaN(deltaAngle);
 		}
-		List<BlockPos> points = straight ? getPointsStraight(playerIn, startPos, endPos) : getPointsCurved(playerIn, tangentIn, startPos, endPos);
+		List<BlockPos> points = straight ? //TODO use vec3d instead? to fix accuracy, idk if it'll help tho
+				getPointsStraight(worldIn, playerIn, startPos, endPos)
+				: getPointsCurved(worldIn, playerIn, tangentIn, startPos, endPos);
 		if(points == null) {
 			return EnumActionResult.FAIL;
 		}
+		nbt.removeTag("tangentIn");
+		nbt.removeTag("startPos");
 
 		List<IBlockState> palette = getStatesFromNBT(nbt.getTagList("palette", Constants.NBT.TAG_STRING));
 		if(palette.isEmpty())
 			return EnumActionResult.FAIL;
-		Map<Vec2d, PlannedRoadBlock> plannedBlocks = new HashMap<>();
-		int roadStretch = palette.size() - 1; //how far the road will stretch in each direction at each point (its half-width not including centreline)
+		Map<Vec2i, PlannedRoadBlock> plannedBlocks = new HashMap<>();
+		int roadStretch = palette.size()-1; //how far the road will stretch in each direction at each point (its half-width not including centreline)
 		for (int i = 0; i < points.size(); i++) {
 			for (int xOffset = -roadStretch; xOffset <= roadStretch; xOffset++) {
 				for (int zOffset = -roadStretch; zOffset <= roadStretch; zOffset++) {
 					double distSqr = xOffset*xOffset + zOffset*zOffset;
-					if(distSqr > roadStretch*roadStretch) {
+					if(distSqr >= palette.size()*palette.size()) {
 						continue;
 					}
 					BlockPos point = points.get(i);
-					Vec2d worldPosXZ = new Vec2d(point.getX() + xOffset, point.getZ() + zOffset);
+					Vec2i worldPosXZ = new Vec2i(point.getX() + xOffset, point.getZ() + zOffset);
 					PlannedRoadBlock plan = plannedBlocks.get(worldPosXZ);
 					if(plan == null) {
 						plan = new PlannedRoadBlock();
@@ -130,10 +136,10 @@ public class ItemRoadStaff extends Item implements IHasModel {
 		}
 		Map<IBlockState, Integer> priorityMap = new HashMap<>();
 		for (int i = 0; i < palette.size(); i++) {
-			priorityMap.put(palette.get(i), i);
+			priorityMap.putIfAbsent(palette.get(i), i);
 		}
 		plannedBlocks.forEach((xz, pb) -> {
-			for (int h = 0; h <= 5; h++) {
+			for (int h = 5; h >= 0; h--) {
 				BlockPos placePos = new BlockPos(xz.x, pb.yPos + h, xz.y);
 				IBlockState curr = worldIn.getBlockState(placePos);
 				int currPriority = priorityMap.computeIfAbsent(curr, b ->
@@ -141,7 +147,7 @@ public class ItemRoadStaff extends Item implements IHasModel {
 								-1 : Integer.MAX_VALUE); //max priority if indestructible, otherwise min priority
 				int newPriority = h == 0 ? priorityMap.get(pb.state) : -1; //clearing space above the road has maximum priority
 				if(newPriority >= currPriority) {
-					return; //skip if we are trying to replace a higher priority (smaller priority number) block
+					continue; //skip if we are trying to replace a higher priority (smaller priority number) block
 				}
 				worldIn.setBlockState(placePos, h == 0 ? pb.state : Blocks.AIR.getDefaultState(), 2);
 			}
@@ -151,14 +157,15 @@ public class ItemRoadStaff extends Item implements IHasModel {
 		return EnumActionResult.SUCCESS;
 	}
 
-	private List<BlockPos> getPointsStraight(EntityPlayer playerIn, BlockPos startPos, BlockPos endPos) {
+	private List<BlockPos> getPointsStraight(World worldIn, EntityPlayer playerIn, BlockPos startPos, BlockPos endPos) {
 		List<BlockPos> points = new ArrayList<>();
 		double dx = endPos.getX() - startPos.getX();
 		double dy = endPos.getY() - startPos.getY();
 		double dz = endPos.getZ() - startPos.getZ();
 		double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 		if(dist > MAX_ROAD_LENGTH) {
-			MessageUtils.sendErrorMessage(playerIn, "road_staff_too_long", MAX_ROAD_LENGTH, dist);
+			if(worldIn.isRemote)
+				MessageUtils.sendErrorMessage(playerIn, "road_staff_too_long", MAX_ROAD_LENGTH, dist);
 			return null;
 		}
 		//calculate normalised distances
@@ -177,7 +184,7 @@ public class ItemRoadStaff extends Item implements IHasModel {
 		return points;
 	}
 
-	private List<BlockPos> getPointsCurved(EntityPlayer playerIn, BlockPos tangentIn, BlockPos startPos, BlockPos endPos) {
+	private List<BlockPos> getPointsCurved(World worldIn, EntityPlayer playerIn, BlockPos tangentIn, BlockPos startPos, BlockPos endPos) {
 		Vec2f tangent = new Vec2f(startPos.getX() - tangentIn.getX(), startPos.getZ() - tangentIn.getZ());
 		@SuppressWarnings("SuspiciousNameCombination")
 		Vec2f tangentPerp = new Vec2f(tangent.y, -tangent.x);
@@ -198,18 +205,19 @@ public class ItemRoadStaff extends Item implements IHasModel {
 		Vec2f centreToEnd = new Vec2f(endPos.getX() - centrePos.x, endPos.getZ() - centrePos.y);
 		float deltaAngle = GeometryUtils.deltaAngle360(centreToStart, centreToEnd);
 		boolean invertAngle = GeometryUtils.signedAngle(tangent, endpointsDir) <= 0;
+		double adjustedDeltaAngle = invertAngle ? 360f - deltaAngle : deltaAngle;
 		float startAngle = GeometryUtils.deltaAngle360(Vec2f.UNIT_X, centreToStart);
 		double circumference = 2*Math.PI*radius;
 		double anglePerMetre = 360f/circumference;
-		if(deltaAngle/anglePerMetre > MAX_ROAD_LENGTH) {
-			MessageUtils.sendErrorMessage(playerIn, "road_staff_too_long", MAX_ROAD_LENGTH, deltaAngle/anglePerMetre);
+		if(adjustedDeltaAngle/anglePerMetre > MAX_ROAD_LENGTH) {
+			if(worldIn.isRemote)
+				MessageUtils.sendErrorMessage(playerIn, "road_staff_too_long", MAX_ROAD_LENGTH, adjustedDeltaAngle/anglePerMetre);
 			return null;
 		}
 
 		List<BlockPos> points = new ArrayList<>();
 		MutableAABB circleBB = new MutableAABB(startPos.getX(), startPos.getY(), startPos.getZ());
 		circleBB.addPoint(endPos.getX(), endPos.getY(), endPos.getZ());
-		double adjustedDeltaAngle = invertAngle ? 360f - deltaAngle : deltaAngle;
 		for (double a = 0d; a < adjustedDeltaAngle; a += anglePerMetre) {
 			double trueAngle = invertAngle ? startAngle - a : startAngle + a;
 			trueAngle = Math.toRadians(trueAngle);
